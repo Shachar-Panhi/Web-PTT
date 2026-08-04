@@ -8,7 +8,7 @@
 #include <boost/beast/http.hpp>
 #include <spdlog/spdlog.h>
 
-namespace PTT{
+namespace WebPTT::Api {
     using tcp = boost::asio::ip::tcp;
     
     class Listener {
@@ -17,4 +17,4 @@ namespace PTT{
     private:
         tcp::acceptor acceptor_;
     };
-}
+} // namespace WebPTT::Api

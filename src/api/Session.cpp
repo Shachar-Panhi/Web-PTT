@@ -1,7 +1,9 @@
 #include "Session.hpp"
+#include "../utils/JsonUtils.hpp"
+#include "Types.hpp"
 
 
-namespace PTT{ 
+namespace WebPTT::Api { 
     Session::Session(tcp::socket socket)
     : executor_(socket.get_executor())
     , stream_(std::move(socket)) {}
@@ -41,14 +43,16 @@ namespace PTT{
             handle_is_alive(res);
         }
         else if (req.target() == "/ptt/start" && req.method() == HTTP::verb::post) {
-            handle_ptt_start(res);
+            handle_ptt_start(req, res);
         }
         else if (req.target() == "/ptt/stop" && req.method() == HTTP::verb::post) {
             handle_ptt_stop(res);
         }
         else {
+            res.set(HTTP::field::content_type, "application/json");
             res.result(HTTP::status::not_found);
-            res.body() = "404 Not Found";
+            res.body() = R"({"status": "not found"})";
+
         }
 
         res.prepare_payload();
@@ -66,15 +70,35 @@ namespace PTT{
     }
 
     void Session::handle_is_alive(HTTP::response<HTTP::string_body>& res) {
+        res.set(HTTP::field::content_type, "application/json");
         res.result(HTTP::status::ok);
-        res.set(HTTP::field::content_type, "text/plain");
-        res.body() = "server is alive";
+        res.body() = R"({"message": "alive", "status": "ok"})";
+
     }
 
-    void Session::handle_ptt_start(HTTP::response<HTTP::string_body>& res) {
-        res.result(HTTP::status::ok);
-        res.set(HTTP::field::content_type, "text/plain");
-        res.body() = "started receiving information";
+    void Session::handle_ptt_start(const HTTP::request<HTTP::string_body>& req, HTTP::response<HTTP::string_body>& res) {
+        auto result = WebPTT::Utils::parse_json<MessageBody>(req.body());
+        if (result) {
+            const MessageBody& body = result.value();
+            spdlog::info("Received message: {}, status: {}", body.message_, body.status_);
+            res.set(HTTP::field::content_type, "application/json");
+            res.result(HTTP::status::ok);
+            res.body() = R"({"message": "received", "status": "ok"})";
+        } else {
+            std::string glz_error = glz::format_error(result.error());
+            spdlog::error("Failed to parse request body: {}", glz_error);
+            ErrorResponse error_response{.message_ = std::move(glz_error), .status_ = "error"};
+            
+            res.set(HTTP::field::content_type, "application/json");
+            auto result_json = WebPTT::Utils::serialize_json(error_response);
+            if (result_json) {
+                res.result(HTTP::status::bad_request);
+                res.body() = result_json.value();
+            } else {
+                    res.result(HTTP::status::internal_server_error);
+                    res.body() = R"({"message": "Failed to serialize error response", "status": "error"})";
+            }
+        }
     }    
     
     void Session::handle_ptt_stop(HTTP::response<HTTP::string_body>& res) {
@@ -82,4 +106,4 @@ namespace PTT{
         res.set(HTTP::field::content_type, "text/plain");
         res.body() = "stopped receiving information";
     }   
-}  // namespace PTT
+}  // namespace WebPTT::Api
