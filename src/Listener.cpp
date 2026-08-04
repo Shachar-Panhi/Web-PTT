@@ -1,0 +1,41 @@
+#include "Listener.hpp"
+#include "Session.hpp"
+
+namespace PTT {
+    constexpr int kPort = 8080;
+    const std::string kIPAddress = "127.0.0.1";
+    
+    Listener::Listener(const boost::asio::any_io_executor& io_context)
+    : acceptor_(io_context) {}
+    
+    boost::asio::awaitable<void> Listener::listen() {
+        auto io_context = acceptor_.get_executor();
+        boost::system::error_code errc;
+
+        tcp::endpoint endpoint(boost::asio::ip::make_address(kIPAddress, errc), kPort);
+        if (errc){
+            spdlog::error("invalid ip address {}", errc.message());
+            co_return;
+        }
+
+        errc = acceptor_.open(endpoint.protocol(), errc);
+        errc = acceptor_.bind(endpoint, errc);
+        errc = acceptor_.listen(boost::asio::socket_base::max_listen_connections, errc);
+
+        if (errc) {
+            spdlog::error("failed to start server: {}", errc.message());
+            co_return;
+        }
+        
+        
+        spdlog::info("server is listening on port 8080");
+        
+        while (true) {
+            tcp::socket socket = co_await acceptor_.async_accept(redirect_error(boost::asio::use_awaitable, errc));
+            if (!errc) {
+                auto session = std::make_shared<Session>(std::move(socket));
+                co_spawn(io_context, session->handle_session(), boost::asio::detached);
+            }
+        }
+    }
+}  // namespace PTT
