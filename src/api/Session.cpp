@@ -1,19 +1,9 @@
 #include "Session.hpp"
 #include "../utils/JsonUtils.hpp"
+#include "Types.hpp"
 
 
-namespace PTT{ 
-
-    struct MessageBody {
-    std::string message_;
-    std::string status_;
-    };
-
-    struct ErrorResponse {
-        std::string message_;
-        std::string status_;
-    };
-
+namespace WebPTT::Api { 
     Session::Session(tcp::socket socket)
     : executor_(socket.get_executor())
     , stream_(std::move(socket)) {}
@@ -87,7 +77,7 @@ namespace PTT{
     }
 
     void Session::handle_ptt_start(const HTTP::request<HTTP::string_body>& req, HTTP::response<HTTP::string_body>& res) {
-        auto result = JsonUtils::parse_json<MessageBody>(req.body());
+        auto result = WebPTT::Utils::parse_json<MessageBody>(req.body());
         if (result) {
             const MessageBody& body = result.value();
             spdlog::info("Received message: {}, status: {}", body.message_, body.status_);
@@ -100,7 +90,7 @@ namespace PTT{
             ErrorResponse error_response{.message_ = std::move(glz_error), .status_ = "error"};
             
             res.set(HTTP::field::content_type, "application/json");
-            auto result_json = JsonUtils::serialize_json(error_response);
+            auto result_json = WebPTT::Utils::serialize_json(error_response);
             if (result_json) {
                 res.result(HTTP::status::bad_request);
                 res.body() = result_json.value();
@@ -116,4 +106,4 @@ namespace PTT{
         res.set(HTTP::field::content_type, "text/plain");
         res.body() = "stopped receiving information";
     }   
-}  // namespace PTT
+}  // namespace WebPTT::Api

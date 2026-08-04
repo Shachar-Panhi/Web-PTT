@@ -6,7 +6,7 @@
 #include <expected>
 #include <string>
 
-namespace JsonUtils {
+namespace WebPTT::Utils {
 
 template <typename T>
 std::expected<T, glz::error_ctx> parse_json(const std::string& json_str) {
@@ -28,4 +28,4 @@ std::expected<std::string, glz::error_ctx> serialize_json(const T& obj) {
     return json_str;
 }
 
-} // namespace JsonUtils
+} // namespace WebPTT::Utils

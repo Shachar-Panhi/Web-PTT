@@ -8,7 +8,7 @@
 #include <boost/beast/http.hpp>
 #include <spdlog/spdlog.h>
 
-namespace PTT {
+namespace WebPTT::Api {
     using tcp = boost::asio::ip::tcp;
     namespace HTTP = boost::beast::http;
 
@@ -27,4 +27,4 @@ namespace PTT {
         boost::asio::any_io_executor executor_;
         boost::beast::tcp_stream stream_;
     };
-}  // namespace PTT
+}  // namespace WebPTT::Api
