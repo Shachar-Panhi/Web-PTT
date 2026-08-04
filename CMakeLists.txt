@@ -37,7 +37,7 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(boost libdatachannel spdlog glaze)
 
-add_executable(backend "backend.cpp")
+add_executable(backend "src/main.cpp" "src/Listener.cpp" "src/Session.cpp")
 target_link_libraries(backend PRIVATE 
     Boost::asio
     Boost::beast
