@@ -1,7 +1,7 @@
 #include "Listener.hpp"
 #include "Session.hpp"
 
-namespace PTT {
+namespace WebPTT::Api {
     constexpr int kPort = 8080;
     const std::string kIPAddress = "127.0.0.1";
     
@@ -38,4 +38,4 @@ namespace PTT {
             }
         }
     }
-}  // namespace PTT
+}  // namespace WebPTT::Api
