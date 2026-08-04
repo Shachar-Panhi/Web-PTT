@@ -19,7 +19,7 @@ namespace PTT {
         static HTTP::response<HTTP::string_body> handle_request(const HTTP::request<HTTP::string_body>& req);
         boost::asio::awaitable<void> send_response(const HTTP::response<HTTP::string_body>& res);
         static void handle_is_alive(HTTP::response<HTTP::string_body>& res);
-        static void handle_ptt_start(HTTP::response<HTTP::string_body>& res);
+        static void handle_ptt_start(const HTTP::request<HTTP::string_body>& req, HTTP::response<HTTP::string_body>& res);
         static void handle_ptt_stop(HTTP::response<HTTP::string_body>& res);
 
 
