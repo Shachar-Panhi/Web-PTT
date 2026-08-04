@@ -1,45 +1,43 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
 export default function App() {
-  const [status, setStatus] = useState<string>('Disconnected')
+  const [status, setStatus] = useState<string>('Ready')
   const [messages, setMessages] = useState<string[]>([])
   const [input, setInput] = useState<string>('')
-  
-  const ws = useRef<WebSocket | null>(null)
 
-  useEffect(() => {
-    ws.current = new WebSocket('ws://127.0.0.1:8080')
+  const sendMessage = async () => {
+    if (input.trim() === '') return
 
-    ws.current.onopen = () => {
-      setStatus('Connected')
-    }
+    const payload = input
+    setInput('')
+    setStatus('Sending...')
 
-    ws.current.onmessage = (event) => {
-      setMessages((prev) => [...prev, event.data])
-    }
+    try {
+      const response = await fetch('http://127.0.0.1:8080', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain'
+        },
+        body: payload
+      })
 
-    ws.current.onclose = () => {
-      setStatus('Disconnected')
-    }
-
-    return () => {
-      if (ws.current) {
-        ws.current.close()
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`)
       }
-    }
-  }, [])
 
-  const sendMessage = () => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN && input.trim() !== '') {
-      ws.current.send(input)
-      setInput('')
+      const reply = await response.text()
+      setMessages((prev) => [...prev, reply])
+      setStatus('Ready')
+    } catch (error) {
+      setMessages((prev) => [...prev, 'Failed to connect or receive response'])
+      setStatus('Error')
     }
   }
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h2>C++ Backend Connection</h2>
+      <h2>C++ Backend Connection (HTTP)</h2>
       <p>Status: <strong>{status}</strong></p>
       
       <div style={{ marginBottom: '20px' }}>
@@ -51,7 +49,7 @@ export default function App() {
           style={{ padding: '5px', marginRight: '10px', width: '250px' }}
         />
         <button onClick={sendMessage} style={{ padding: '5px 15px' }}>
-          Send to Server
+          Send HTTP Request
         </button>
       </div>
 

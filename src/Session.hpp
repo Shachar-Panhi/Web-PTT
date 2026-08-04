@@ -15,8 +15,14 @@ namespace PTT {
     class Session : public std::enable_shared_from_this<Session> {
     public: 
         explicit Session(tcp::socket);
-        boost::asio::awaitable<void> handle_session();
-        void handle_get_request(HTTP::response<HTTP::string_body>* res, std::string target);
+        boost::asio::awaitable<void> start();
+        HTTP::response<HTTP::string_body> handle_request(const HTTP::request<HTTP::string_body>& req);
+        boost::asio::awaitable<void> send_response(const HTTP::response<HTTP::string_body>& res);
+        void handle_is_alive(HTTP::response<HTTP::string_body>& res);
+        void handle_ptt_start(HTTP::response<HTTP::string_body>& res);
+        void handle_ptt_stop(HTTP::response<HTTP::string_body>& res);
+
+
     private:
         boost::asio::any_io_executor executor_;
         boost::beast::tcp_stream stream_;

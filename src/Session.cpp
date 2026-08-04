@@ -6,7 +6,7 @@ namespace PTT{
     : executor_(socket.get_executor())
     , stream_(std::move(socket)) {}
     
-    boost::asio::awaitable<void> Session::handle_session() {
+    boost::asio::awaitable<void> Session::start() {
         boost::system::error_code errc;                    
         boost::beast::flat_buffer buffer;
 
@@ -28,51 +28,58 @@ namespace PTT{
                 }
                 break;
             }
+            HTTP::response<HTTP::string_body> res = handle_request(req);
+            co_await send_response(res);
+        }
+    }
 
-            HTTP::response<HTTP::string_body> res{HTTP::status::ok, req.version()};
-            res.set(HTTP::field::access_control_allow_origin, "*");
-            res.set(HTTP::field::access_control_allow_headers, "*");
-            res.set(HTTP::field::access_control_allow_methods, "GET, POST, OPTIONS");
+    HTTP::response<HTTP::string_body> Session::handle_request (const HTTP::request<HTTP::string_body>& req) {
 
-            if (req.method() == HTTP::verb::get) {
-                handle_get_request(&res, req.target());
-            }
-            else {
-                res.result(HTTP::status::method_not_allowed);
-                res.body() = "Method Not Allowed";
-            }
+        HTTP::response<HTTP::string_body> res{HTTP::status::ok, req.version()};
 
-            res.prepare_payload();
+        if (req.target() == "/isAlive" && req.method() == HTTP::verb::get) {
+            handle_is_alive(res);
+        }
+        else if (req.target() == "/ptt/start" && req.method() == HTTP::verb::post) {
+            handle_ptt_start(res);
+        }
+        else if (req.target() == "/ptt/stop" && req.method() == HTTP::verb::post) {
+            handle_ptt_stop(res);
+        }
+        else {
+            res.result(HTTP::status::not_found);
+            res.body() = "404 Not Found";
+        }
 
-            co_await HTTP::async_write(stream_, res, boost::asio::redirect_error(boost::asio::use_awaitable, errc));
+        res.prepare_payload();
+
+        return res;
+    }
+    
+    boost::asio::awaitable<void> Session::send_response(const HTTP::response<HTTP::string_body>& res) {
+        boost::system::error_code errc;                        
+        co_await HTTP::async_write(stream_, res, boost::asio::redirect_error(boost::asio::use_awaitable, errc));
             if (errc) {
                 spdlog::error("write error: {}", errc.message());
-                break;
+                co_return;
             }
-
-            if (req.need_eof()) {
-                boost::system::error_code shutdown_errc;
-                errc = stream_.socket().shutdown(tcp::socket::shutdown_send, shutdown_errc);
-                break;
-            }
-        }
     }
 
-    void Session::handle_get_request(HTTP::response<HTTP::string_body>* res, std::string target) {
-        res->result(HTTP::status::ok);
-        res->set(HTTP::field::content_type, "text/plain");
-        if (target == "/isAlive") {
-            res->body() = "server is alive";
-        } 
-        else if (target == "/ptt/start") {
-            res->body() = "started receiving information";
-        } 
-        else if (target == "/ptt/stop") {
-            res->body() = "stopped receiving information";
-        } 
-        else {
-            res->result(HTTP::status::not_found);
-            res->body() = "404 Not Found";
-        }
+    void Session::handle_is_alive(HTTP::response<HTTP::string_body>& res) {
+        res.result(HTTP::status::ok);
+        res.set(HTTP::field::content_type, "text/plain");
+        res.body() = "server is alive";
     }
+
+    void Session::handle_ptt_start(HTTP::response<HTTP::string_body>& res) {
+        res.result(HTTP::status::ok);
+        res.set(HTTP::field::content_type, "text/plain");
+        res.body() = "started receiving information";
+    }    
+    
+    void Session::handle_ptt_stop(HTTP::response<HTTP::string_body>& res) {
+        res.result(HTTP::status::ok);
+        res.set(HTTP::field::content_type, "text/plain");
+        res.body() = "stopped receiving information";
+    }   
 }  // namespace PTT

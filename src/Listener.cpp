@@ -34,7 +34,7 @@ namespace PTT {
             tcp::socket socket = co_await acceptor_.async_accept(redirect_error(boost::asio::use_awaitable, errc));
             if (!errc) {
                 auto session = std::make_shared<Session>(std::move(socket));
-                co_spawn(io_context, session->handle_session(), boost::asio::detached);
+                co_spawn(io_context, session->start(), boost::asio::detached);
             }
         }
     }
