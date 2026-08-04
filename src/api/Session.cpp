@@ -1,7 +1,14 @@
 #include "Session.hpp"
+#include "../utils/JsonUtils.hpp"
 
 
 namespace PTT{ 
+
+    struct MessageBody {
+    std::string message_;
+    std::string status_;
+    };
+
     Session::Session(tcp::socket socket)
     : executor_(socket.get_executor())
     , stream_(std::move(socket)) {}
@@ -66,9 +73,16 @@ namespace PTT{
     }
 
     void Session::handle_is_alive(HTTP::response<HTTP::string_body>& res) {
-        res.result(HTTP::status::ok);
-        res.set(HTTP::field::content_type, "text/plain");
-        res.body() = "server is alive";
+        MessageBody body{.message_ = "server is alive", .status_ = "ok"};
+        auto result = JsonUtils::serialize_json(body);
+        if (result) {
+            res.set(HTTP::field::content_type, "application/json");
+            res.body() = result.value();
+        } else {
+            spdlog::error("failed to serialize response: {}", glz::format_error(result.error()));
+            res.result(HTTP::status::internal_server_error);
+            res.body() = "internal Server Error";
+        }
     }
 
     void Session::handle_ptt_start(HTTP::response<HTTP::string_body>& res) {
