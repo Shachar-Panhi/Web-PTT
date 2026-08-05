@@ -1,6 +1,7 @@
 #include "Session.hpp"
 #include "../utils/JsonUtils.hpp"
 #include "Types.hpp"
+#include "boost/beast/http/message_fwd.hpp"
 
 
 namespace WebPTT::Api { 
@@ -30,37 +31,53 @@ namespace WebPTT::Api {
                 }
                 break;
             }
-            HTTP::response<HTTP::string_body> res = handle_request(req);
-            co_await send_response(res);
+            std::expected<HTTP::response<HTTP::string_body>, HTTP::response<HTTP::file_body>> res = handle_request(req);
+            
+            bool need_eof = false;
+            if (res) {
+                need_eof = res->need_eof();
+                co_await send_response(*res);
+            } else {
+                need_eof = res.error().need_eof();
+                co_await send_response_filebody(res.error());
+            }
+
+            if (need_eof) {
+                errc = stream_.socket().shutdown(tcp::socket::shutdown_send, errc);
+                break;
+            }
         }
     }
 
-    HTTP::response<HTTP::string_body> Session::handle_request (const HTTP::request<HTTP::string_body>& req) {
-
-        HTTP::response<HTTP::string_body> res{HTTP::status::ok, req.version()};
+    std::expected<HTTP::response<HTTP::string_body>, HTTP::response<HTTP::file_body>> Session::handle_request (const HTTP::request<HTTP::string_body>& req) {
+        HTTP::response<HTTP::string_body> res;
+        std::expected<HTTP::response<HTTP::file_body>, HTTP::response<HTTP::string_body>> file_res;
 
         if (req.target() == "/isAlive" && req.method() == HTTP::verb::get) {
-            handle_is_alive(res);
+            res = handle_is_alive(req);
         }
         else if (req.target() == "/ptt/start" && req.method() == HTTP::verb::post) {
-            handle_ptt_start(req, res);
+            res = handle_ptt_start(req);
         }
         else if (req.target() == "/ptt/stop" && req.method() == HTTP::verb::post) {
-            handle_ptt_stop(res);
+            file_res = handle_ptt_stop(req);
+            if (file_res) {
+                return std::unexpected(std::move(*file_res));
+            }
+            res = file_res.error();
         }
         else {
             res.set(HTTP::field::content_type, "application/json");
             res.result(HTTP::status::not_found);
             res.body() = R"({"status": "not found"})";
-
         }
 
         res.prepare_payload();
 
-        return res;
+        return std::move(res);
     }
     
-    boost::asio::awaitable<void> Session::send_response(const HTTP::response<HTTP::string_body>& res) {
+    boost::asio::awaitable<void> Session::send_response(HTTP::response<HTTP::string_body>& res) {
         boost::system::error_code errc;                        
         co_await HTTP::async_write(stream_, res, boost::asio::redirect_error(boost::asio::use_awaitable, errc));
             if (errc) {
@@ -69,14 +86,26 @@ namespace WebPTT::Api {
             }
     }
 
-    void Session::handle_is_alive(HTTP::response<HTTP::string_body>& res) {
+    boost::asio::awaitable<void> Session::send_response_filebody(HTTP::response<HTTP::file_body>& res) {
+        boost::system::error_code errc; 
+        co_await HTTP::async_write(stream_, res, boost::asio::redirect_error(boost::asio::use_awaitable, errc));
+        if (errc) {
+            spdlog::error("write error: {}", errc.message());
+            co_return;
+        }
+    }
+
+    HTTP::response<HTTP::string_body> Session::handle_is_alive(const HTTP::request<HTTP::string_body>& req) {
+        HTTP::response<HTTP::string_body> res{HTTP::status::ok, req.version()};
         res.set(HTTP::field::content_type, "application/json");
         res.result(HTTP::status::ok);
         res.body() = R"({"message": "alive", "status": "ok"})";
-
+        return res;
     }
 
-    void Session::handle_ptt_start(const HTTP::request<HTTP::string_body>& req, HTTP::response<HTTP::string_body>& res) {
+    HTTP::response<HTTP::string_body> Session::handle_ptt_start(const HTTP::request<HTTP::string_body>& req) {
+        HTTP::response<HTTP::string_body> res{HTTP::status::ok, req.version()};
+        
         auto result = WebPTT::Utils::parse_json<MessageBody>(req.body());
         if (result) {
             const MessageBody& body = result.value();
@@ -99,11 +128,27 @@ namespace WebPTT::Api {
                     res.body() = R"({"message": "Failed to serialize error response", "status": "error"})";
             }
         }
-    }    
+        return res;
+    }   
     
-    void Session::handle_ptt_stop(HTTP::response<HTTP::string_body>& res) {
-        res.result(HTTP::status::ok);
-        res.set(HTTP::field::content_type, "text/plain");
-        res.body() = "stopped receiving information";
+    std::expected<HTTP::response<HTTP::file_body>, HTTP::response<HTTP::string_body>> Session::handle_ptt_stop(const HTTP::request<HTTP::string_body>& req) {
+        boost::beast::error_code errc;
+        HTTP::file_body::value_type body;
+
+
+        body.open("src/dummy.wav", boost::beast::file_mode::read, errc);
+        if (errc) {
+            spdlog::error("Failed to open file: {}", errc.message());
+            HTTP::response<HTTP::string_body> res{HTTP::status::ok, req.version()};
+            res.result(HTTP::status::internal_server_error);
+            res.set(HTTP::field::content_type, "application/json");
+            res.body() = R"({"message": "Failed to open file", "status": "error"})";
+            return std::unexpected(res);
+        }
+        
+        HTTP::response<HTTP::file_body> file_res{std::piecewise_construct, std::make_tuple(std::move(body)), std::make_tuple(HTTP::status::ok, req.version())};        
+        file_res.set(HTTP::field::content_type, "audio/wav");
+
+        return std::move(file_res);
     }   
 }  // namespace WebPTT::Api

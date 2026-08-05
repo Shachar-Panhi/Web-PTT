@@ -7,6 +7,7 @@
 #include "boost/asio/any_io_executor.hpp"
 #include <boost/beast/http.hpp>
 #include <spdlog/spdlog.h>
+#include <expected>
 
 namespace WebPTT::Api {
     using tcp = boost::asio::ip::tcp;
@@ -16,11 +17,12 @@ namespace WebPTT::Api {
     public: 
         explicit Session(tcp::socket);
         boost::asio::awaitable<void> start();
-        static HTTP::response<HTTP::string_body> handle_request(const HTTP::request<HTTP::string_body>& req);
-        boost::asio::awaitable<void> send_response(const HTTP::response<HTTP::string_body>& res);
-        static void handle_is_alive(HTTP::response<HTTP::string_body>& res);
-        static void handle_ptt_start(const HTTP::request<HTTP::string_body>& req, HTTP::response<HTTP::string_body>& res);
-        static void handle_ptt_stop(HTTP::response<HTTP::string_body>& res);
+        static std::expected<HTTP::response<HTTP::string_body>, HTTP::response<HTTP::file_body>> handle_request(const HTTP::request<HTTP::string_body>& req);
+        boost::asio::awaitable<void> send_response(HTTP::response<HTTP::string_body>& res);
+        boost::asio::awaitable<void> send_response_filebody(HTTP::response<HTTP::file_body>& res);
+        static HTTP::response<HTTP::string_body> handle_is_alive(const HTTP::request<HTTP::string_body>& req);
+        static HTTP::response<HTTP::string_body> handle_ptt_start(const HTTP::request<HTTP::string_body>& req);
+        static std::expected<HTTP::response<HTTP::file_body>, HTTP::response<HTTP::string_body>> handle_ptt_stop(const HTTP::request<HTTP::string_body>& req);
 
 
     private:
