@@ -31,6 +31,7 @@ boost::asio::awaitable<void> UdpServer::start() {
     boost::system::error_code errc;
     boost::asio::ip::udp::endpoint remote_endpoint;
     std::array<uint8_t, kArraySize> recv_buffer{};
+    
 
     spdlog::info("UDP server is listening on port {}", kPort);
 
@@ -58,7 +59,7 @@ boost::asio::awaitable<void> UdpServer::start() {
         
         auto result = packet.parse(std::move(buffer));
 
-        if (result == decltype(result)::kSuccess) {
+        if (result == RtpCpp::Result::kSuccess) {
             uint32_t timestamp = packet.get_header().timestamp_;
             uint16_t seq_num = packet.get_header().sequence_number_;
 
