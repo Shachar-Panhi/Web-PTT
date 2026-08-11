@@ -4,10 +4,11 @@
 
 #include "../../ThirdParty/RtpCpp/RtpPacket.hpp"
 #include "../../ThirdParty/G711/g711.h"
+#include "boost/asio/any_io_executor.hpp"
 
 namespace WebPTT::UDP {
-    UdpServer::UdpServer(boost::asio::io_context& io_context)
-        : socket_(io_context) {
+    UdpServer::UdpServer(const boost::asio::any_io_executor& executor)
+        : socket_(executor) {
 
         boost::system::error_code errc;
         auto endpoint = udp::endpoint(boost::asio::ip::make_address(kIpAddress, errc), kPort);

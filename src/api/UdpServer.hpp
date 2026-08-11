@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <boost/asio.hpp>
+#include "boost/asio/any_io_executor.hpp"
 
 namespace WebPTT::UDP
 {
@@ -13,7 +14,7 @@ namespace WebPTT::UDP
 
     class UdpServer {
     public:
-        explicit UdpServer(boost::asio::io_context& io_context);
+        explicit UdpServer(const boost::asio::any_io_executor& executor);
         boost::asio::awaitable<void> start();
         static void process_packet(std::size_t bytes_recvd, std::array<uint8_t, kArraySize> recv_buffer);
 
