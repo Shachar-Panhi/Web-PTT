@@ -19,6 +19,5 @@ namespace WebPTT::UDP
 
     private:
         boost::asio::ip::udp::socket socket_;
-        bool is_recording_;
     };
 }  // namespace WebPTT::UDP

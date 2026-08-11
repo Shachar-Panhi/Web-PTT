@@ -7,7 +7,7 @@
 
 namespace WebPTT::UDP {
     UdpServer::UdpServer(boost::asio::io_context& io_context)
-        : socket_(io_context), is_recording_() {
+        : socket_(io_context) {
 
         boost::system::error_code errc;
         auto endpoint = udp::endpoint(boost::asio::ip::make_address(kIpAddress, errc), kPort);
@@ -56,6 +56,7 @@ boost::asio::awaitable<void> UdpServer::start() {
         RtpCpp::RtpPacket<std::vector<uint8_t>> packet;
         
         auto result = packet.parse(std::move(buffer));
+
         if (result == decltype(result)::kSuccess) {
             uint32_t timestamp = packet.get_header().timestamp_;
             uint16_t seq_num = packet.get_header().sequence_number_;
