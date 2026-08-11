@@ -53,9 +53,9 @@ boost::asio::awaitable<void> UdpServer::start() {
 
     void UdpServer::process_packet(std::size_t bytes_recvd, std::array<uint8_t, kArraySize> recv_buffer) {
         std::vector<uint8_t> buffer(recv_buffer.data(), recv_buffer.data() + bytes_recvd);
-        RtpCpp::RtpPacket packet(std::move(buffer));
+        RtpCpp::RtpPacket<std::vector<uint8_t>> packet;
         
-        auto result = packet.parse();
+        auto result = packet.parse(std::move(buffer));
         if (result == decltype(result)::kSuccess) {
             uint32_t timestamp = packet.get_header().timestamp_;
             uint16_t seq_num = packet.get_header().sequence_number_;
@@ -65,6 +65,8 @@ boost::asio::awaitable<void> UdpServer::start() {
             std::size_t payload_size = packet.get_payload_size();
             std::size_t header_size = bytes_recvd - payload_size;
             
+            spdlog::info("payload: {}, byte size: {}, header size: {}", payload_size, bytes_recvd, header_size);
+
             std::vector<int16_t> pcm_data(payload_size);
 
             size_t decoded_samples = g711_alaw_decode(
@@ -74,8 +76,7 @@ boost::asio::awaitable<void> UdpServer::start() {
                 pcm_data.size()
             );
 
-            std::size_t pcm_byte_size = decoded_samples * sizeof(int16_t);
-            spdlog::info("size of PCM: {} bytes", pcm_byte_size);
+            spdlog::info("size of PCM: {} bytes", decoded_samples);
         }
         else {
             spdlog::error("Parsing error");
