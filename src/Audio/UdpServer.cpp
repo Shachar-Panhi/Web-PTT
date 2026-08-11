@@ -5,7 +5,7 @@
 #include "../../ThirdParty/G711/g711.h"
 #include "boost/asio/any_io_executor.hpp"
 
-namespace WebPTT::UDP {
+namespace WebPTT::Audio {
     UdpServer::UdpServer(const boost::asio::any_io_executor& executor)
         : socket_(executor)
         {
@@ -27,31 +27,31 @@ namespace WebPTT::UDP {
         spdlog::info("Socket Address = {}, Socket Port = {}", socket_.local_endpoint().address().to_string(), socket_.local_endpoint().port());
     }
 
-boost::asio::awaitable<void> UdpServer::start() {
-    boost::system::error_code errc;
-    boost::asio::ip::udp::endpoint remote_endpoint;    
+    boost::asio::awaitable<void> UdpServer::start() {
+        boost::system::error_code errc;
+        boost::asio::ip::udp::endpoint remote_endpoint;    
 
-    spdlog::info("UDP server is listening on port {}", kPort);
+        spdlog::info("UDP server is listening on port {}", kPort);
 
 
-    while (socket_.is_open()) {
-        auto& raw_buffer = rtp_packet_.buffer();
+        while (socket_.is_open()) {
+            auto& raw_buffer = rtp_packet_.buffer();
 
-        std::size_t bytes_recvd = co_await socket_.async_receive_from(
-            boost::asio::buffer(raw_buffer), remote_endpoint,
-            boost::asio::redirect_error(boost::asio::use_awaitable, errc)
-        );
+            std::size_t bytes_recvd = co_await socket_.async_receive_from(
+                boost::asio::buffer(raw_buffer), remote_endpoint,
+                boost::asio::redirect_error(boost::asio::use_awaitable, errc)
+            );
 
-        if (!errc && bytes_recvd > 0) {
-            process_packet(bytes_recvd);
-        } else if (errc) {
-            spdlog::error("Receive error: {}", errc.message());
-            if (errc == boost::asio::error::operation_aborted) {
-                break;
+            if (!errc && bytes_recvd > 0) {
+                process_packet(bytes_recvd);
+            } else if (errc) {
+                spdlog::error("Receive error: {}", errc.message());
+                if (errc == boost::asio::error::operation_aborted) {
+                    break;
+                }
             }
         }
     }
-}
 
     void UdpServer::process_packet(std::size_t bytes_recvd) {
                 
@@ -85,4 +85,4 @@ boost::asio::awaitable<void> UdpServer::start() {
 
         spdlog::info("size of PCM: {} bytes", decoded_samples);
     }
-}  // namespace WebPTT::UDP
+}  // namespace WebPTT::Audio

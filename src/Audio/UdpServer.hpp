@@ -5,7 +5,7 @@
 #include <boost/asio.hpp>
 #include "boost/asio/any_io_executor.hpp"
 
-namespace WebPTT::UDP
+namespace WebPTT::Audio
 {
     using udp = boost::asio::ip::udp;
     constexpr int kMaxPacketSize = 2048;
@@ -24,4 +24,4 @@ namespace WebPTT::UDP
         boost::asio::ip::udp::socket socket_;
         RtpCpp::RtpPacket<std::array<uint8_t, kRtpSize>> rtp_packet_;
     };
-}  // namespace WebPTT::UDP
+}  // namespace WebPTT::Audio
