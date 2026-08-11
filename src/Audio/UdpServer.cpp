@@ -56,8 +56,13 @@ namespace WebPTT::Audio {
     void UdpServer::process_packet(std::size_t bytes_recvd) {
                 
         auto result = rtp_packet_.parse(bytes_recvd);
+        if (rtp_packet_.get_header().payload_type_ != kG711PayloadType)
+        {
+            spdlog::error("Wrong payload type");
+            return;
+        }
 
-        if (!(result == RtpCpp::Result::kSuccess))
+        if (result != RtpCpp::Result::kSuccess)
         {
             spdlog::error("Parsing error");
             return;

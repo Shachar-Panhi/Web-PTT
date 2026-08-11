@@ -12,6 +12,7 @@ namespace WebPTT::Audio
     constexpr int kPCMSize = 160;
     constexpr int kRtpSize = 172;
     constexpr int kPort = 8081;
+    constexpr int kG711PayloadType = 8;
     constexpr auto kIpAddress = "127.0.0.1";
 
     class UdpServer {
