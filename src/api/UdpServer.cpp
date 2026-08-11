@@ -7,21 +7,32 @@
 
 namespace WebPTT::UDP {
     UdpServer::UdpServer(boost::asio::io_context& io_context)
-        : socket_(io_context) {
+        : socket_(io_context), is_recording_() {
 
         boost::system::error_code errc;
-        errc = socket_.open(udp::v4(), errc);
-        errc = socket_.bind(udp::endpoint(udp::v4(), kPort), errc);
+        auto endpoint = udp::endpoint(boost::asio::ip::make_address(kIpAddress, errc), kPort);
+        if (errc) {
+            spdlog::error("invalid IP address: {}", errc.message());
+            return;
+        }
+
+        errc = socket_.open(endpoint.protocol(), errc);
+        errc = socket_.bind(endpoint, errc);
         if (errc) {
             spdlog::error("failed to start server: {}", errc.message());
             return;
         }
+
+        spdlog::info("Socket Address = {}, Socket Port = {}", socket_.local_endpoint().address().to_string(), socket_.local_endpoint().port());
     }
 
 boost::asio::awaitable<void> UdpServer::start() {
     boost::system::error_code errc;
     boost::asio::ip::udp::endpoint remote_endpoint;
     std::array<uint8_t, kArraySize> recv_buffer{};
+
+    spdlog::info("UDP server is listening on port {}", kPort);
+
 
     while (socket_.is_open()) {
         std::size_t bytes_recvd = co_await socket_.async_receive_from(
@@ -65,6 +76,9 @@ boost::asio::awaitable<void> UdpServer::start() {
 
             std::size_t pcm_byte_size = decoded_samples * sizeof(int16_t);
             spdlog::info("size of PCM: {} bytes", pcm_byte_size);
+        }
+        else {
+            spdlog::error("Parsing error");
         }
     }
 }  // namespace WebPTT::UDP

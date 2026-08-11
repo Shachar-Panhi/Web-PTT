@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(Web-PTT LANGUAGES CXX)
+project(Web-PTT LANGUAGES CXX C)
 
 add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
 
@@ -34,8 +34,22 @@ FetchContent_Declare(
     URL https://github.com/stephenberry/glaze/archive/refs/tags/v7.9.1.zip
 )
 
-
 FetchContent_MakeAvailable(boost libdatachannel spdlog glaze)
+
+
+file(GLOB_RECURSE G711_SOURCES "ThirdParty/G711/*.c" "ThirdParty/G711/*.h")
+set_source_files_properties(${G711_SOURCES} PROPERTIES LANGUAGE C)
+add_library(G711Lib STATIC ${G711_SOURCES})
+target_include_directories(G711Lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/G711")
+
+
+
+file(GLOB_RECURSE RtpCpp_SOURCES "ThirdParty/RtpCpp/*.cpp" "ThirdParty/RtpCpp/*.hpp")
+set_source_files_properties(${RtpCpp_SOURCES} PROPERTIES LANGUAGE CXX)
+add_library(RtpCppLib STATIC ${RtpCpp_SOURCES})
+target_include_directories(RtpCppLib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/RtpCpp")
+
+
 
 add_executable(backend "src/main.cpp" "src/api/Listener.cpp" "src/api/Session.cpp" "src/api/UdpServer.cpp")
 target_link_libraries(backend PRIVATE 
@@ -43,4 +57,6 @@ target_link_libraries(backend PRIVATE
     Boost::beast
     datachannel
     glaze::glaze
-    spdlog::spdlog)
+    spdlog::spdlog
+    G711Lib
+    RtpCppLib)

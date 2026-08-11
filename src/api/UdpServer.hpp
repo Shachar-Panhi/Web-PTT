@@ -8,7 +8,8 @@ namespace WebPTT::UDP
 {
     using udp = boost::asio::ip::udp;
     constexpr int kArraySize = 2048;
-    constexpr int kPort = 8080;
+    constexpr int kPort = 8081;
+    constexpr auto kIpAddress = "127.0.0.1";
 
     class UdpServer {
     public:
@@ -18,5 +19,6 @@ namespace WebPTT::UDP
 
     private:
         boost::asio::ip::udp::socket socket_;
+        bool is_recording_;
     };
 }  // namespace WebPTT::UDP

@@ -3,7 +3,7 @@
 
 namespace WebPTT::Api {
     constexpr int kPort = 8080;
-    const std::string kIPAddress = "127.0.0.1";
+    constexpr auto kIPAddress = "127.0.0.1";
     
     Listener::Listener(const boost::asio::any_io_executor& io_context)
     : acceptor_(io_context) {}
