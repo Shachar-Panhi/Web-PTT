@@ -64,13 +64,14 @@ boost::asio::awaitable<void> UdpServer::start() {
             spdlog::error("Parsing error");
             return;
         }
-        
+
         uint32_t timestamp = packet.get_header().timestamp_;
         uint16_t seq_num = packet.get_header().sequence_number_;
 
         spdlog::info("Timestamp: {} , Sequence: {}", timestamp, seq_num);
 
-        std::size_t payload_size = packet.get_payload_size();
+        auto payload = packet.payload();
+        std::size_t payload_size = payload.size();
         std::size_t header_size = bytes_recvd - payload_size;
         
         spdlog::info("payload: {}, byte size: {}, header size: {}", payload_size, bytes_recvd, header_size);
