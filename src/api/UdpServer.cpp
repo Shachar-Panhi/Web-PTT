@@ -59,30 +59,31 @@ boost::asio::awaitable<void> UdpServer::start() {
         
         auto result = packet.parse(std::move(buffer));
 
-        if (result == RtpCpp::Result::kSuccess) {
-            uint32_t timestamp = packet.get_header().timestamp_;
-            uint16_t seq_num = packet.get_header().sequence_number_;
-
-            spdlog::info("Timestamp: {} , Sequence: {}", timestamp, seq_num);
-
-            std::size_t payload_size = packet.get_payload_size();
-            std::size_t header_size = bytes_recvd - payload_size;
-            
-            spdlog::info("payload: {}, byte size: {}, header size: {}", payload_size, bytes_recvd, header_size);
-
-            std::vector<int16_t> pcm_data(payload_size);
-
-            size_t decoded_samples = g711_alaw_decode(
-                recv_buffer.data() + header_size, 
-                payload_size, 
-                pcm_data.data(), 
-                pcm_data.size()
-            );
-
-            spdlog::info("size of PCM: {} bytes", decoded_samples);
-        }
-        else {
+        if (!(result == RtpCpp::Result::kSuccess))
+        {
             spdlog::error("Parsing error");
+            return;
         }
+        
+        uint32_t timestamp = packet.get_header().timestamp_;
+        uint16_t seq_num = packet.get_header().sequence_number_;
+
+        spdlog::info("Timestamp: {} , Sequence: {}", timestamp, seq_num);
+
+        std::size_t payload_size = packet.get_payload_size();
+        std::size_t header_size = bytes_recvd - payload_size;
+        
+        spdlog::info("payload: {}, byte size: {}, header size: {}", payload_size, bytes_recvd, header_size);
+
+        std::vector<int16_t> pcm_data(payload_size);
+
+        size_t decoded_samples = g711_alaw_decode(
+            recv_buffer.data() + header_size, 
+            payload_size, 
+            pcm_data.data(), 
+            pcm_data.size()
+        );
+
+        spdlog::info("size of PCM: {} bytes", decoded_samples);
     }
 }  // namespace WebPTT::UDP
