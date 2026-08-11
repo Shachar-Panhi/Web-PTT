@@ -7,9 +7,8 @@
 
 namespace WebPTT::UDP {
     UdpServer::UdpServer(const boost::asio::any_io_executor& executor)
-        : socket_(executor), 
-        rtp_packet_(kMaxPacketSize), 
-        pcm_buffer_(kMaxPacketSize) {
+        : socket_(executor)
+        {
 
         boost::system::error_code errc;
         auto endpoint = udp::endpoint(boost::asio::ip::make_address(kIpAddress, errc), kPort);
@@ -75,11 +74,13 @@ boost::asio::awaitable<void> UdpServer::start() {
         
         spdlog::info("payload: {}, byte size: {}, header size: {}", payload_size, bytes_recvd, header_size);
 
+        std::array<int16_t, kPCMSize> pcm_buffer{};
+
         size_t decoded_samples = g711_alaw_decode(
             payload.data() + header_size, 
             payload_size, 
-            pcm_buffer_.data(), 
-            pcm_buffer_.size()
+            pcm_buffer.data(), 
+            pcm_buffer.size()
         );
 
         spdlog::info("size of PCM: {} bytes", decoded_samples);

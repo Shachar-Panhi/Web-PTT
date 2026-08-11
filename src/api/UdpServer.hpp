@@ -9,6 +9,8 @@ namespace WebPTT::UDP
 {
     using udp = boost::asio::ip::udp;
     constexpr int kMaxPacketSize = 2048;
+    constexpr int kPCMSize = 160;
+    constexpr int kRtpSize = 172;
     constexpr int kPort = 8081;
     constexpr auto kIpAddress = "127.0.0.1";
 
@@ -20,7 +22,6 @@ namespace WebPTT::UDP
 
     private:
         boost::asio::ip::udp::socket socket_;
-        RtpCpp::RtpPacket<std::vector<uint8_t>> rtp_packet_;
-        std::vector<int16_t> pcm_buffer_;
+        RtpCpp::RtpPacket<std::array<uint8_t, kRtpSize>> rtp_packet_;
     };
 }  // namespace WebPTT::UDP
