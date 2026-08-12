@@ -86,6 +86,8 @@ namespace WebPTT::Api {
         boost::beast::error_code errc;
         HTTP::file_body::value_type body;
 
+        audio_data_->set_is_recording(false);
+        
         body.open("src/dummy.wav", boost::beast::file_mode::read, errc);
         
         if (errc) {

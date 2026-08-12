@@ -23,7 +23,7 @@ namespace WebPTT::Api {
         static HTTP::response<HTTP::string_body> make_error_response(HTTP::status status, unsigned int version, const std::string& body_data);
         static HTTP::response<HTTP::string_body> handle_is_alive(const HTTP::request<HTTP::string_body>& req);
         HTTP::response<HTTP::string_body> handle_ptt_start(const HTTP::request<HTTP::string_body>& req);
-        static std::expected<HTTP::response<HTTP::file_body>, HTTP::response<HTTP::string_body>> handle_ptt_stop(const HTTP::request<HTTP::string_body>& req);
+        std::expected<HTTP::response<HTTP::file_body>, HTTP::response<HTTP::string_body>> handle_ptt_stop(const HTTP::request<HTTP::string_body>& req);
 
         template <typename T>
         boost::asio::awaitable<void> send_response(HTTP::response<T> res) {
