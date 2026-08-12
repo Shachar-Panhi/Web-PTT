@@ -1,7 +1,10 @@
 #include "Session.hpp"
+#include "../Audio/dr_wav_wrapper.hpp"
 #include <glaze/glaze.hpp>
 #include <rtc/rtc.hpp>
+#include <boost/uuid.hpp>
 #include "boost/beast/http/message_fwd.hpp"
+#include "boost/uuid/time_generator_v7.hpp"
 
 
 namespace WebPTT::Api { 
@@ -82,12 +85,24 @@ namespace WebPTT::Api {
     }   
     
     std::expected<HTTP::response<HTTP::file_body>, HTTP::response<HTTP::string_body>> Session::handle_ptt_stop(const HTTP::request<HTTP::string_body>& req) {
+        audio_data_->set_is_recording(false);
+        
+        static boost::uuids::time_generator_v7 generator;
+        std::string uuid_str = boost::uuids::to_string(generator());
+        auto file_path = std::format("src/{}.wav", uuid_str);
+
+        auto pcm_data = audio_data_->get_audio_span();
+        if (!pcm_data.empty()) {
+            DrWav::Wrapper::DrWavWrapper writer;
+            if (writer.save_packet_vector(file_path, pcm_data) != DrWav::Wrapper::WavError::kSuccess) {
+                spdlog::error("Failed to write PCM data to WAV file");
+            }
+        }
+
         boost::beast::error_code errc;
         HTTP::file_body::value_type body;
 
-        audio_data_->set_is_recording(false);
-
-        body.open("src/dummy.wav", boost::beast::file_mode::read, errc);
+        body.open(file_path.c_str(), boost::beast::file_mode::read, errc);
         
         if (errc) {
             spdlog::error("Failed to open file: {}", errc.message());
