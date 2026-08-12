@@ -5,8 +5,9 @@ namespace WebPTT::Api {
     constexpr int kPort = 8080;
     constexpr auto kIPAddress = "127.0.0.1";
     
-    Listener::Listener(const boost::asio::any_io_executor& io_context)
-    : acceptor_(io_context) {}
+    Listener::Listener(const boost::asio::any_io_executor& io_context, std::shared_ptr<WebPTT::Audio::AudioData> audio_data)
+    : acceptor_(io_context) 
+    , audio_data_(std::move(audio_data)) {}
     
     boost::asio::awaitable<void> Listener::listen() {
         auto io_context = acceptor_.get_executor();
@@ -33,7 +34,7 @@ namespace WebPTT::Api {
         while (true) {
             tcp::socket socket = co_await acceptor_.async_accept(redirect_error(boost::asio::use_awaitable, errc));
             if (!errc) {
-                auto session = std::make_shared<Session>(std::move(socket));
+                auto session = std::make_shared<Session>(std::move(socket), audio_data_);
                 co_spawn(io_context, session->start(), boost::asio::detached);
             }
         }

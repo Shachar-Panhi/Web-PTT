@@ -1,14 +1,14 @@
 #include "Session.hpp"
-#include "../utils/JsonUtils.hpp"
-#include "Types.hpp"
 #include <glaze/glaze.hpp>
 #include <rtc/rtc.hpp>
 #include "boost/beast/http/message_fwd.hpp"
 
+
 namespace WebPTT::Api { 
-    Session::Session(tcp::socket socket)
+    Session::Session(tcp::socket socket, std::shared_ptr<WebPTT::Audio::AudioData> audio_data)
     : executor_(socket.get_executor())
-    , stream_(std::move(socket)) {}
+    , stream_(std::move(socket))
+    , audio_data_(std::move(audio_data)) {}
     
     boost::asio::awaitable<void> Session::start() {
         boost::system::error_code errc;                    
@@ -76,28 +76,16 @@ namespace WebPTT::Api {
     }
 
     HTTP::response<HTTP::string_body> Session::handle_ptt_start(const HTTP::request<HTTP::string_body>& req) {
-        auto result = WebPTT::Utils::parse_json<MessageBody>(req.body());
         
-        if (result) {
-            const MessageBody& body = result.value();
-            spdlog::info("Received message: {}, status: {}", body.message_, body.status_);
-            return make_api_response(HTTP::status::ok, req.version(), R"({"message": "received", "status": "ok"})");
-        }  
-        std::string glz_error = glz::format_error(result.error());
-        spdlog::error("Failed to parse request body: {}", glz_error);
-        
-        ErrorResponse error_response{.message_ = std::move(glz_error), .status_ = "error"};
-        auto result_json = WebPTT::Utils::serialize_json(error_response);
-            
-        if (result_json) {
-            return make_error_response(HTTP::status::bad_request, req.version(), result_json.value());
-        }  
-        return make_error_response(HTTP::status::internal_server_error, req.version(), R"({"message": "Failed to serialize error response", "status": "error"})");
+        audio_data_->set_is_recording(true);
+        return make_api_response(HTTP::status::ok, req.version(), R"({"message": "recording started", "status": "ok"})");
     }   
     
     std::expected<HTTP::response<HTTP::file_body>, HTTP::response<HTTP::string_body>> Session::handle_ptt_stop(const HTTP::request<HTTP::string_body>& req) {
         boost::beast::error_code errc;
         HTTP::file_body::value_type body;
+
+        audio_data_->set_is_recording(false);
 
         body.open("src/dummy.wav", boost::beast::file_mode::read, errc);
         

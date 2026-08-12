@@ -2,13 +2,13 @@
 #include <spdlog/spdlog.h>
 #include <cstdint>
 
-#include "../../ThirdParty/G711/g711.h"
+#include "AudioData.hpp"
 #include "boost/asio/any_io_executor.hpp"
 
 namespace WebPTT::Audio {
-    UdpServer::UdpServer(const boost::asio::any_io_executor& executor)
-        : socket_(executor)
-        {
+    UdpServer::UdpServer(const boost::asio::any_io_executor& executor, std::shared_ptr<WebPTT::Audio::AudioData> audio_data)
+    : socket_(executor)
+    , audio_data_(std::move(audio_data)) {
 
         boost::system::error_code errc;
         auto endpoint = udp::endpoint(boost::asio::ip::make_address(kIpAddress, errc), kPort);
@@ -33,7 +33,6 @@ namespace WebPTT::Audio {
 
         spdlog::info("UDP server is listening on port {}", kPort);
 
-
         while (socket_.is_open()) {
             auto& raw_buffer = rtp_packet_.buffer();
 
@@ -42,29 +41,31 @@ namespace WebPTT::Audio {
                 boost::asio::redirect_error(boost::asio::use_awaitable, errc)
             );
 
-            if (!errc && bytes_recvd > 0) {
-                process_packet(bytes_recvd);
-            } else if (errc) {
+            if (errc) {
                 spdlog::error("Receive error: {}", errc.message());
                 if (errc == boost::asio::error::operation_aborted) {
                     break;
                 }
             }
+            
+            if (audio_data_->get_is_recording() && bytes_recvd > 0) {
+                process_packet(bytes_recvd);
+            }
         }
     }
 
     void UdpServer::process_packet(std::size_t bytes_recvd) {
-                
         auto result = rtp_packet_.parse(bytes_recvd);
-        if (rtp_packet_.get_header().payload_type_ != kG711PayloadType)
-        {
-            spdlog::error("Wrong payload type");
-            return;
-        }
 
         if (result != RtpCpp::Result::kSuccess)
         {
             spdlog::error("Parsing error");
+            return;
+        }
+
+        if (rtp_packet_.get_header().payload_type_ != kG711PayloadType)
+        {
+            spdlog::error("Wrong payload type");
             return;
         }
 
@@ -74,20 +75,10 @@ namespace WebPTT::Audio {
         spdlog::info("Timestamp: {} , Sequence: {}", timestamp, seq_num);
 
         auto payload = rtp_packet_.payload();
-        std::size_t payload_size = payload.size();
-        std::size_t header_size = bytes_recvd - payload_size;
+        spdlog::info("payload: {}, byte size: {}, header size: {}", payload.size(), bytes_recvd, bytes_recvd - payload.size());
         
-        spdlog::info("payload: {}, byte size: {}, header size: {}", payload_size, bytes_recvd, header_size);
-
-        std::array<int16_t, kPCMSize> pcm_buffer{};
-
-        size_t decoded_samples = g711_alaw_decode(
-            payload.data() + header_size, 
-            payload_size, 
-            pcm_buffer.data(), 
-            pcm_buffer.size()
-        );
-
-        spdlog::info("size of PCM: {} bytes", decoded_samples);
+        
+        audio_data_->decode_store_packets(payload);
+        
     }
 }  // namespace WebPTT::Audio
