@@ -78,7 +78,6 @@ namespace WebPTT::Api {
     HTTP::response<HTTP::string_body> Session::handle_ptt_start(const HTTP::request<HTTP::string_body>& req) {
         
         audio_data_->set_is_recording(true);
-        audio_data_->clear_audio_vector();
         return make_api_response(HTTP::status::ok, req.version(), R"({"message": "recording started", "status": "ok"})");
     }   
     
@@ -87,7 +86,7 @@ namespace WebPTT::Api {
         HTTP::file_body::value_type body;
 
         audio_data_->set_is_recording(false);
-        
+
         body.open("src/dummy.wav", boost::beast::file_mode::read, errc);
         
         if (errc) {
