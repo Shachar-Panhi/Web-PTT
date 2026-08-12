@@ -77,7 +77,8 @@ namespace WebPTT::Audio {
         auto payload = rtp_packet_.payload();
         spdlog::info("payload: {}, byte size: {}, header size: {}", payload.size(), bytes_recvd, bytes_recvd - payload.size());
         
-        WebPTT::Audio::AudioData::store_packets(payload, audio_data_->get_audio_vector());
+        
+        audio_data_->store_packets(payload);
         
     }
 }  // namespace WebPTT::Audio
