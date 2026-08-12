@@ -6,10 +6,9 @@
 #include "boost/asio/any_io_executor.hpp"
 
 namespace WebPTT::Audio {
-        UdpServer::UdpServer(const boost::asio::any_io_executor& executor, std::shared_ptr<WebPTT::Audio::AudioData> audio_data)
-        : socket_(executor)
-        , audio_data_(std::move(audio_data))
-        {
+    UdpServer::UdpServer(const boost::asio::any_io_executor& executor, std::shared_ptr<WebPTT::Audio::AudioData> audio_data)
+    : socket_(executor)
+    , audio_data_(std::move(audio_data)) {
 
         boost::system::error_code errc;
         auto endpoint = udp::endpoint(boost::asio::ip::make_address(kIpAddress, errc), kPort);
@@ -34,7 +33,6 @@ namespace WebPTT::Audio {
 
         spdlog::info("UDP server is listening on port {}", kPort);
 
-
         while (socket_.is_open()) {
             auto& raw_buffer = rtp_packet_.buffer();
 
@@ -43,26 +41,20 @@ namespace WebPTT::Audio {
                 boost::asio::redirect_error(boost::asio::use_awaitable, errc)
             );
 
-            if (!errc && bytes_recvd > 0) {
-                bool should_record = false;
-                {
-                    should_record = audio_data_->get_is_recording();
-                }
-
-                if (should_record) {
-                    process_packet(bytes_recvd);
-                }
-            } else if (errc) {
+            if (errc) {
                 spdlog::error("Receive error: {}", errc.message());
                 if (errc == boost::asio::error::operation_aborted) {
                     break;
                 }
             }
+            
+            if (audio_data_->get_is_recording() && bytes_recvd > 0) {
+                process_packet(bytes_recvd);
+            }
         }
     }
 
     void UdpServer::process_packet(std::size_t bytes_recvd) {
-                
         auto result = rtp_packet_.parse(bytes_recvd);
 
         if (result != RtpCpp::Result::kSuccess)
@@ -96,6 +88,7 @@ namespace WebPTT::Audio {
             pcm_buffer.data(), 
             pcm_buffer.size()
         );
+
         auto& audio_vector = audio_data_->get_audio_vector();
         audio_vector.insert(
             audio_vector.end(),
