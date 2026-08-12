@@ -6,8 +6,9 @@
 #include "boost/asio/any_io_executor.hpp"
 
 namespace WebPTT::Audio {
-    UdpServer::UdpServer(const boost::asio::any_io_executor& executor)
+        UdpServer::UdpServer(const boost::asio::any_io_executor& executor, std::shared_ptr<WebPTT::Audio::AudioData> audio_data)
         : socket_(executor)
+        , audio_data_(std::move(audio_data))
         {
 
         boost::system::error_code errc;
@@ -43,7 +44,14 @@ namespace WebPTT::Audio {
             );
 
             if (!errc && bytes_recvd > 0) {
-                process_packet(bytes_recvd);
+                bool should_record = false;
+                {
+                    should_record = audio_data_->get_is_recording();
+                }
+
+                if (should_record) {
+                    process_packet(bytes_recvd);
+                }
             } else if (errc) {
                 spdlog::error("Receive error: {}", errc.message());
                 if (errc == boost::asio::error::operation_aborted) {
@@ -56,15 +64,16 @@ namespace WebPTT::Audio {
     void UdpServer::process_packet(std::size_t bytes_recvd) {
                 
         auto result = rtp_packet_.parse(bytes_recvd);
-        if (rtp_packet_.get_header().payload_type_ != kG711PayloadType)
-        {
-            spdlog::error("Wrong payload type");
-            return;
-        }
 
         if (result != RtpCpp::Result::kSuccess)
         {
             spdlog::error("Parsing error");
+            return;
+        }
+
+        if (rtp_packet_.get_header().payload_type_ != kG711PayloadType)
+        {
+            spdlog::error("Wrong payload type");
             return;
         }
 
@@ -82,10 +91,16 @@ namespace WebPTT::Audio {
         std::array<int16_t, kPCMSize> pcm_buffer{};
 
         size_t decoded_samples = g711_alaw_decode(
-            payload.data() + header_size, 
+            payload.data(), 
             payload_size, 
             pcm_buffer.data(), 
             pcm_buffer.size()
+        );
+        auto& audio_vector = audio_data_->get_audio_vector();
+        audio_vector.insert(
+            audio_vector.end(),
+            pcm_buffer.begin(),
+            pcm_buffer.begin() + decoded_samples
         );
 
         spdlog::info("size of PCM: {} bytes", decoded_samples);
