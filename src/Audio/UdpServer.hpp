@@ -10,7 +10,6 @@ namespace WebPTT::Audio
 {
     using udp = boost::asio::ip::udp;
     constexpr int kMaxPacketSize = 2048;
-    constexpr int kPCMSize = 160;
     constexpr int kRtpSize = 172;
     constexpr int kPort = 8081;
     constexpr int kG711PayloadType = 8;

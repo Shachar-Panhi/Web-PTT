@@ -2,7 +2,7 @@
 #include <spdlog/spdlog.h>
 #include <cstdint>
 
-#include "../../ThirdParty/G711/g711.h"
+#include "AudioData.hpp"
 #include "boost/asio/any_io_executor.hpp"
 
 namespace WebPTT::Audio {
@@ -75,27 +75,9 @@ namespace WebPTT::Audio {
         spdlog::info("Timestamp: {} , Sequence: {}", timestamp, seq_num);
 
         auto payload = rtp_packet_.payload();
-        std::size_t payload_size = payload.size();
-        std::size_t header_size = bytes_recvd - payload_size;
+        spdlog::info("payload: {}, byte size: {}, header size: {}", payload.size(), bytes_recvd, bytes_recvd - payload.size());
         
-        spdlog::info("payload: {}, byte size: {}, header size: {}", payload_size, bytes_recvd, header_size);
-
-        std::array<int16_t, kPCMSize> pcm_buffer{};
-
-        size_t decoded_samples = g711_alaw_decode(
-            payload.data(), 
-            payload_size, 
-            pcm_buffer.data(), 
-            pcm_buffer.size()
-        );
-
-        auto& audio_vector = audio_data_->get_audio_vector();
-        audio_vector.insert(
-            audio_vector.end(),
-            pcm_buffer.begin(),
-            pcm_buffer.begin() + decoded_samples
-        );
-
-        spdlog::info("size of PCM: {} bytes", decoded_samples);
+        WebPTT::Audio::AudioData::store_packets(payload, audio_data_->get_audio_vector());
+        
     }
 }  // namespace WebPTT::Audio
